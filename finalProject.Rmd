@@ -1,0 +1,245 @@
+---
+title: "STA 141A Final Project"
+author: "Winson Yu"
+date: "2024-09-11"
+output: html_document
+---
+Load the necessary Libraries
+```{r}
+library(car)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+```
+
+Load Player data set
+```{r}
+player_stats <- read.csv("../dataset/players.csv")
+```
+
+Load Salaries data set, take mean salary over entire career
+```{r}
+salaries <- read.csv("../dataset/salaries_1985to2018.csv")
+
+calculate_average_salaries <- function(data) {
+  # Ensure the data is in a data frame
+  data <- as.data.frame(data)
+  
+  # Calculate average salary for each player
+  result <- aggregate(salary ~ player_id, data, mean)
+  
+  # Rename the salary column to average_salary
+  names(result)[names(result) == "salary"] <- "average_salary"
+  
+  # Arrange by player_id
+  result <- result[order(result$player_id), ]
+  
+  return(result)
+}
+
+calculate_sum_salaries <- function(data) {
+  # ensure data is in a data frame
+  data <- as.data.frame(data)
+  
+  # Calculate average salary for each player
+  result <- aggregate(salary ~ player_id, data, sum)
+  
+  # Rename the salary column to average_salary
+  names(result)[names(result) == "salary"] <- "total_salary"
+  
+  # Arrange by player_id
+  result <- result[order(result$player_id), ]
+  
+  return(result)
+}
+
+average_salaries <- calculate_average_salaries(salaries)
+total_salaries <- calculate_sum_salaries(salaries)
+```
+
+Combine both data sets by the index
+```{r}
+combined_data <- player_stats %>%
+  left_join(average_salaries, by = c("X_id" = "player_id"))
+
+combined_data2 <- combined_data %>%
+  left_join(total_salaries, by = c("X_id" = "player_id"))
+```
+
+Select the necessary data columns, change column names
+```{r}
+select_data <- combined_data2 %>%
+  mutate(
+    Average_Salary = average_salary,
+    Total_Salary = total_salary,
+    Points = as.numeric(career_PTS),
+    Assists = as.numeric(career_AST),
+    Rebounds = as.numeric(career_TRB),
+    Player_Efficiency_Rating = as.numeric(career_PER),
+    Effective_Field_Goal_Percentage = as.numeric(gsub("%", "", career_eFG.)) / 100,
+    Win_Shares = as.numeric(career_WS),
+    Player_Position = strsplit(as.character(position), " and "),
+  ) %>%
+  select(name, Player_Position, Average_Salary, Total_Salary, Points, Assists, Rebounds, Player_Efficiency_Rating, Effective_Field_Goal_Percentage, Win_Shares)
+
+colnames(select_data)[1] <- c("Name")
+```
+
+Remove rows containing NA, sort data according to name
+```{r}
+data_nona <- select_data %>%
+  na.omit()
+
+sorted_data <- data_nona %>% arrange(Name)
+
+data <- sorted_data
+```
+
+Fit linear regression in terms of points, rebounds, assists
+```{r}
+direct_model <- lm(formula = Average_Salary ~ Points + Rebounds + Assists, data = data)
+summary(direct_model)
+vif(direct_model)
+
+data$log_Avg_Salary <- log(data$Average_Salary)
+direct_model_log <- lm(log_Avg_Salary ~ Points + Rebounds + Assists, data = data)
+summary(direct_model_log)
+
+data$sqrt_Avg_Salary <- sqrt(data$Average_Salary)
+direct_model_sqrt <- lm(sqrt_Avg_Salary ~ Points + Rebounds + Assists, data = data)
+summary(direct_model_sqrt)
+```
+
+Points
+```{r}
+points_model <- lm(Average_Salary ~ Points, data = data)
+summary(points_model)
+
+points_model_log <- lm(log_Avg_Salary ~ Points, data = data)
+summary(points_model_log)
+
+points_model_sqrt <- lm(sqrt_Avg_Salary ~ Points, data = data)
+summary(points_model_sqrt)
+
+points_model_poly <- lm(sqrt_Avg_Salary ~ Points + I(Points^2), data = data)
+summary(points_model_poly)
+```
+Rebounds
+```{r}
+rebounds_model <- lm(Average_Salary ~ Rebounds, data = data)
+summary(rebounds_model)
+
+rebounds_model_log <- lm(log_Avg_Salary ~ Rebounds, data = data)
+summary(rebounds_model_log)
+
+rebounds_model_sqrt <- lm(sqrt_Avg_Salary ~ Rebounds, data = data)
+summary(rebounds_model_sqrt)
+
+rebounds_model_poly <- lm(sqrt_Avg_Salary ~ Rebounds + I(Rebounds^2), data = data)
+summary(rebounds_model_poly)
+```
+
+Assists
+```{r}
+assists_model <- lm(Average_Salary ~ Assists, data = data)
+summary(assists_model)
+
+assists_model_log <- lm(log_Avg_Salary ~ Assists, data = data)
+summary(assists_model_log)
+
+assists_model_sqrt <- lm(sqrt_Avg_Salary ~ Assists, data = data)
+summary(assists_model_sqrt)
+
+assists_model_poly <- lm(sqrt_Avg_Salary ~ Assists + I(Assists^2) + I(Assists^3), data = data)
+summary(assists_model_poly)
+```
+Fit linear regression in terms of Efficiency, Field Goal %, Win_Shares
+```{r}
+advanced_model <- lm(formula = Average_Salary ~ Player_Efficiency_Rating + Effective_Field_Goal_Percentage + Win_Shares, data = data)
+summary(advanced_model)
+vif(advanced_model)
+
+advanced_model_log <- lm(log_Avg_Salary ~ Player_Efficiency_Rating + Effective_Field_Goal_Percentage + Win_Shares, data = data)
+summary(advanced_model_log)
+
+advanced_model_sqrt <- lm(sqrt_Avg_Salary ~ Player_Efficiency_Rating + Effective_Field_Goal_Percentage + Win_Shares, data = data)
+summary(advanced_model_sqrt)
+```
+Player Efficiency Rating
+```{r}
+efficiency_model <- lm(Average_Salary ~ Player_Efficiency_Rating, data = data)
+summary(efficiency_model)
+
+efficiency_model_log <- lm(log_Avg_Salary ~ Player_Efficiency_Rating, data = data)
+summary(efficiency_model_log)
+
+efficiency_model_sqrt <- lm(sqrt_Avg_Salary ~ Player_Efficiency_Rating, data = data)
+summary(efficiency_model_sqrt)
+
+efficiency_model_poly <- lm(sqrt_Avg_Salary ~ Player_Efficiency_Rating + I(Player_Efficiency_Rating^2), data = data)
+summary(efficiency_model_poly)
+```
+
+Effective Field Goal Percentage
+```{r}
+field_goal_model <- lm(Average_Salary ~ Effective_Field_Goal_Percentage, data = data)
+summary(field_goal_model)
+
+field_goal_model_log <- lm(log_Avg_Salary ~ Effective_Field_Goal_Percentage, data = data)
+summary(field_goal_model_log)
+
+field_goal_model_sqrt <- lm(sqrt_Avg_Salary ~ Effective_Field_Goal_Percentage, data = data)
+summary(field_goal_model_sqrt)
+
+field_goal_model_poly <- lm(sqrt_Avg_Salary ~ Effective_Field_Goal_Percentage + I(Effective_Field_Goal_Percentage^2), data = data)
+summary(field_goal_model_poly)
+```
+
+Win Shares
+```{r}
+ws_model <- lm(Average_Salary ~ Win_Shares, data = data)
+summary(ws_model)
+
+ws_model_log <- lm(log_Avg_Salary ~ Win_Shares, data = data)
+summary(ws_model_log)
+
+ws_model_sqrt <- lm(sqrt_Avg_Salary ~ Win_Shares, data = data)
+summary(ws_model_sqrt)
+
+ws_model_poly <- lm(sqrt_Avg_Salary ~ Win_Shares + I(Win_Shares^2), data = data)
+summary(ws_model_poly)
+```
+
+```{r}
+create_model_plot <- function(model, x_var, y_var, title) {
+  ggplot(data, aes_string(x = x_var, y = y_var)) +
+    geom_point(alpha = 0.5) +
+    geom_smooth(method = "lm", formula = y ~ x, color = "red") +
+    labs(title = title, x = x_var, y = y_var) +
+    theme_minimal() +
+    theme(plot.title = element_text(size = 10, face = "bold"))
+}
+```
+
+```{r}
+plot_points <- create_model_plot(points_model, "Points", "Average_Salary", "Points vs Average Salary")
+plot_rebounds <- create_model_plot(rebounds_model, "Rebounds", "Average_Salary", "Rebounds vs Average Salary")
+plot_assists <- create_model_plot(assists_model, "Assists", "Average_Salary", "Assists vs Average Salary")
+
+plot_per <- create_model_plot(efficiency_model, "Player_Efficiency_Rating", "Average_Salary", "PER vs Average Salary")
+plot_efg <- create_model_plot(field_goal_model, "Effective_Field_Goal_Percentage", "Average_Salary", "eFG% vs Average Salary")
+plot_ws <- create_model_plot(ws_model, "Win_Shares", "Average_Salary", "Win Shares vs Average Salary")
+
+basic_stats_plots <- grid.arrange(plot_points, plot_rebounds, plot_assists, ncol = 3, top = "Basic Stats Models")
+advanced_stats_plots <- grid.arrange(plot_per, plot_efg, plot_ws, ncol = 3, top = "Advanced Stats Models")
+
+all_plots <- grid.arrange(basic_stats_plots, advanced_stats_plots, direct_model_plots, advanced_model_plots, ncol = 1)
+
+```
+
+Position
+```{r}
+
+```
+

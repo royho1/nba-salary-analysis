@@ -1,0 +1,16 @@
+# Data files
+data/*.csv
+
+# R
+.Rhistory
+.Rdata
+.RData
+.Ruserdata
+.Rproj.user/
+
+# Knit output
+*.html
+
+# OS
+.DS_Store
+Thumbs.db
