@@ -52,6 +52,32 @@ All predictors had statistically significant p-values and VIF values below 5 (no
 
 Centers earned the most on average, with a roughly $465K gap between the highest and lowest paid positions.
 
+## Screenshots
+
+### Basic stats
+
+![Basic stats](docs/screenshots/basic-stats.png)
+
+Points, rebounds, and assists vs average salary.
+
+### Advanced stats
+
+![Advanced stats](docs/screenshots/advanced-stats.png)
+
+PER, eFG%, and win shares vs average salary.
+
+### Model R² comparison
+
+![Model R² comparison](docs/screenshots/r2-comparison.png)
+
+Untransformed-salary R². Direct multivariate model 0.446 vs advanced 0.388.
+
+### Salary by position
+
+![Salary by position](docs/screenshots/salary-by-position.png)
+
+Average salary across the five standard NBA positions.
+
 ## Methods
 
 - Simple and multiple linear regression (R `lm()`)
